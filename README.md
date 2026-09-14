@@ -9,14 +9,15 @@
 | `index.html` | 앱 본체 (로그인 · 홈 갤러리 · 편집기 · 재생) |
 | `config.js` | Supabase 연결정보 (URL · publishable 키). 비워두면 로그인 없이 "이 기기에만 저장" 모드 |
 | `supabase.js` | Supabase 클라이언트 (로컬 복사본) |
-| `supabase_setup.sql` | Supabase에서 한 번 실행할 테이블·권한 설정 |
+| `supabase_setup.sql` | Supabase에서 한 번 실행할 테이블·권한 설정 (악보 저장) |
+| `supabase_share.sql` | 악보 주고받기용 테이블 (과제 보내기 · 제출) — 두 번째로 실행 |
 | `manifest.webmanifest`, `icon-*.png`, `icon.svg` | 홈 화면 추가용 이름·아이콘 |
 
 ## 처음 설정 (1회, 약 10분)
 
 ### 1. Supabase 프로젝트
 1. https://supabase.com → New project (무료). 이름은 `drumnote` 등 아무거나.
-2. **SQL Editor** → `supabase_setup.sql` 내용을 붙여넣고 Run.
+2. **SQL Editor** → `supabase_setup.sql` 을 붙여넣고 Run, 이어서 `supabase_share.sql` 도 Run.
 3. **Authentication → Providers → Email** → `Confirm email` **OFF** → Save.
 4. **Project Settings → API** 에서 `Project URL` 과 `publishable (anon) key` 복사.
 
@@ -24,7 +25,8 @@
 ```js
 window.DRUMNOTE_CONFIG = {
   url: 'https://xxxx.supabase.co',
-  key: 'sb_publishable_xxxx'
+  key: 'sb_publishable_xxxx',
+  teachers: ['선생님아이디']   // 선생님 계정 아이디 (여러 명이면 쉼표로)
 };
 ```
 
@@ -43,6 +45,14 @@ window.DRUMNOTE_CONFIG = {
 3. 같은 아이디·핀번호로 폰·아이패드 어디서든 같은 악보
 
 핀번호를 잊으면 선생님이 Supabase → Authentication → Users 에서 해당 계정을 지우고 다시 가입하게 하면 됩니다. (악보는 계정과 함께 삭제됩니다)
+
+## 과제 보내기 · 제출
+
+- **선생님** — 악보 카드의 `⋯` → **학생에게 보내기** → 학생 체크(전체 선택 가능) → 메모 → 보내기. 편집기의 파일 탭에도 같은 버튼이 있습니다.
+- **학생** — 홈 상단 **받은 악보**에 과제가 뜹니다. 탭하면 내 악보로 복사되어 바로 열립니다. 연습한 뒤 `⋯` → **선생님께 제출**.
+- **선생님** — 받은 악보에 `제출` 표시로 들어오고, 탭하면 `학생이름 · 곡명`으로 내 악보에 복사됩니다.
+- 선생님 계정은 `config.js`의 `teachers`에 아이디를 넣어 지정합니다. 지정 전에는 "보내기"에서 받을 사람을 직접 고릅니다.
+- 받은 악보의 ✕는 받은 함에서만 지웁니다. 이미 가져온 내 악보는 남습니다.
 
 ## 동작 방식
 

@@ -75,6 +75,32 @@ button{font-family:inherit;cursor:pointer}
 .card.new b{font-size:15px;color:var(--txt)}
 .empty{grid-column:1/-1;text-align:center;color:var(--sub);padding:40px 10px;font-size:14px;line-height:1.7}
 
+/* 받은 악보 */
+.inbox{max-width:1400px;margin:0 auto 18px;background:var(--ui2);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
+.ih{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.ih b{font-size:15px}
+.ih .sp{flex:1}
+.ih button{background:none;border:1px solid var(--line);color:var(--sub);border-radius:9px;padding:5px 10px;font-size:12px}
+.badge{background:var(--acc);color:#fff;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 8px;min-width:22px;text-align:center}
+.badge.zero{background:var(--ui3);color:var(--sub)}
+.ilist{display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.ilist::-webkit-scrollbar{display:none}
+.ii{flex:0 0 auto;width:250px;background:var(--ui);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.ii.done{opacity:.6}
+.ii .ik{font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:6px;background:#3b2a5e;color:#d8c8ff;flex:0 0 auto}
+.ii .ik.submit{background:#1e3a2f;color:#9ae6b4}
+.ii .im{flex:1;min-width:0}
+.ii .im b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ii .im small{display:block;font-size:11px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ii .ix{background:none;border:0;color:var(--sub);font-size:16px;padding:4px;flex:0 0 auto}
+.pick{display:flex;flex-direction:column;gap:4px;max-height:38dvh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:6px;margin-top:6px}
+.pick label{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;font-size:15px;margin:0;color:var(--txt)}
+.pick label:active{background:var(--ui3)}
+.pick input{width:18px;height:18px;margin:0}
+.pick small{color:var(--sub);font-size:12px}
+.pick .none{color:var(--sub);font-size:13px;padding:14px;text-align:center}
+.box p.sub{margin:0 0 4px;color:var(--sub);font-size:13.5px}
+
 /* ================= 편집기 ================= */
 #app{display:flex;flex-direction:column;height:100dvh}
 header{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:calc(8px + var(--safe-t)) 12px 8px;background:var(--ui);border-bottom:1px solid var(--line)}
@@ -181,7 +207,13 @@ footer{flex:0 0 auto;background:var(--ui);border-top:1px solid var(--line);paddi
     <button class="hb" id="hImport">⬆ 불러오기</button>
     <button class="hb pri" id="hNew">＋ 새 악보</button>
   </div>
-  <div class="gal-wrap"><div class="gal" id="gallery"></div></div>
+  <div class="gal-wrap">
+    <div class="inbox" id="inbox" hidden>
+      <div class="ih"><b>받은 악보</b><span class="badge" id="inboxN">0</span><span class="sp"></span><button id="inboxRefresh">새로고침</button></div>
+      <div class="ilist" id="inboxList"></div>
+    </div>
+    <div class="gal" id="gallery"></div>
+  </div>
 </div>
 
 <!-- ================= 편집기 ================= -->
@@ -582,8 +614,9 @@ function renderTools(){
   }
   else if(tab==='file'){
     T.appendChild(grp(tbtn('홈 (갤러리)','⌂',false,showHome), tbtn('새 악보','＋',false,()=>{ save(); openEditor(addScore(makeScore()).id); }), tbtn('복제','⧉',false,()=>{ save(); const c=clone(S); c.id=uid(); c.title=S.title+' (복사)'; addScore(c); openEditor(c.id); toast('복제됨'); })));
+    if(cloud()&&user&&shareReady){ const lbl=isTeacher()?'학생에게 보내기':(profiles.some(p=>TEACHERS.includes(p.username)&&p.user_id!==user.uid)?'선생님께 제출':'보내기'); T.appendChild(grp(tbtn(lbl,'✈',false,()=>{ save(); shareDialog(S); },{wide:true}))); }
     T.appendChild(grp(tbtn('JSON 내보내기','⬇',false,()=>exportJson(S)), tbtn('JSON 불러오기','⬆',false,importJson), tbtn('인쇄 / PDF','🖨',false,()=>window.print())));
-    hint.textContent='데이터는 이 브라우저에 자동 저장됩니다. 다른 기기로 옮기려면 JSON으로 내보내세요.';
+    hint.textContent=cloud()&&user?'악보는 자동으로 클라우드에 저장됩니다. 같은 아이디로 어디서든 열 수 있어요.':'데이터는 이 브라우저에 자동 저장됩니다. 다른 기기로 옮기려면 JSON으로 내보내세요.';
   }
   document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
 }
@@ -661,6 +694,67 @@ async function pullAll(){
 }
 window.addEventListener('online',()=>{ if(dirty.size) flush(); });
 
+/* ---------------- 주고받기 (dn_profiles, dn_shares) ---------------- */
+const TEACHERS=(Array.isArray(CFG.teachers)?CFG.teachers:String(CFG.teachers||'').split(',')).map(s=>String(s).trim().toLowerCase()).filter(Boolean);
+const isTeacher=()=>!!(user&&TEACHERS.includes(user.id.toLowerCase()));
+let profiles=[], inbox=[], shareReady=false;
+const nameOf=uidv=>{ const p=profiles.find(x=>x.user_id===uidv); return p?(p.name||p.username):'알 수 없음'; };
+async function ensureProfile(){ if(!cloud()||!user) return; const {error}=await sb.from('dn_profiles').upsert({user_id:user.uid,username:user.id.toLowerCase(),name:user.name||''}); shareReady=!error; }
+async function loadProfiles(){ if(!cloud()||!user) return; const {data}=await sb.from('dn_profiles').select('user_id,username,name'); profiles=data||[]; }
+async function loadInbox(){ if(!cloud()||!user||!shareReady){ inbox=[]; return; } const {data}=await sb.from('dn_shares').select('id,from_user,kind,title,note,created_at,accepted_at').eq('to_user',user.uid).order('created_at',{ascending:false}).limit(100); inbox=data||[]; }
+async function refreshInbox(){ await loadProfiles(); await loadInbox(); renderInbox(); }
+function renderInbox(){
+  const box=$('#inbox'); if(!box) return;
+  if(!cloud()||!user||!shareReady||!inbox.length){ box.hidden=true; return; }
+  box.hidden=false; const unread=inbox.filter(s=>!s.accepted_at).length;
+  const n=$('#inboxN'); n.textContent=unread; n.classList.toggle('zero',!unread);
+  const L=$('#inboxList'); L.innerHTML='';
+  inbox.forEach(sh=>{
+    const d=document.createElement('div'); d.className='ii'+(sh.accepted_at?' done':'');
+    d.innerHTML=`<span class="ik ${sh.kind}">${sh.kind==='submit'?'제출':'과제'}</span><div class="im"><b>${esc(sh.title||'제목 없음')}</b><small>${esc(nameOf(sh.from_user))} · ${fmtDate(new Date(sh.created_at).getTime())}${sh.note?' · '+esc(sh.note):''}${sh.accepted_at?' · 가져옴':''}</small></div><button class="ix" title="삭제">✕</button>`;
+    d.onclick=e=>{ if(e.target.closest('.ix')) return; importShare(sh); };
+    d.querySelector('.ix').onclick=async e=>{ e.stopPropagation(); if(!confirm('받은 악보를 지울까요? (가져온 내 악보는 남습니다)')) return; await sb.from('dn_shares').delete().eq('id',sh.id); inbox=inbox.filter(x=>x.id!==sh.id); renderInbox(); };
+    L.appendChild(d);
+  });
+}
+async function importShare(sh){
+  const have=DB.scores.find(x=>x.fromShare===sh.id); if(have){ openEditor(have.id); return; }
+  const {data,error}=await sb.from('dn_shares').select('data').eq('id',sh.id).single();
+  if(error||!data||!data.data||!Array.isArray(data.data.measures)) return toast('악보를 불러오지 못했습니다');
+  const c=clone(data.data); c.id=uid(); c.fromShare=sh.id; c.updated=Date.now();
+  c.title=sh.kind==='submit'?`${nameOf(sh.from_user)} · ${sh.title||c.title||'제목 없음'}`:(sh.title||c.title||'제목 없음');
+  addScore(c); if(!sh.accepted_at){ sh.accepted_at=new Date().toISOString(); sb.from('dn_shares').update({accepted_at:sh.accepted_at}).eq('id',sh.id).then(()=>{}); }
+  toast(sh.kind==='submit'?'제출된 악보를 가져왔습니다':'과제를 내 악보로 가져왔습니다'); openEditor(c.id);
+}
+async function sendScore(s,toUids,kind,note){
+  const rows=toUids.map(to=>({id:uid(),from_user:user.uid,to_user:to,kind,title:s.title||'',note:note||'',data:s}));
+  const {error}=await sb.from('dn_shares').insert(rows);
+  if(error){ toast('보내기 실패: '+error.message); return false; }
+  toast(kind==='submit'?'선생님께 제출했습니다':`${toUids.length}명에게 보냈습니다`); return true;
+}
+function shareDialog(s){
+  if(!cloud()||!user) return toast('로그인해야 보낼 수 있습니다');
+  if(!shareReady) return toast('주고받기 준비가 안 됐습니다. Supabase에 supabase_share.sql을 실행하세요');
+  const others=profiles.filter(p=>p.user_id!==user.uid).sort((a,b)=>(a.name||a.username).localeCompare(b.name||b.username,'ko'));
+  const teachers=others.filter(p=>TEACHERS.includes(p.username));
+  if(!isTeacher() && teachers.length){
+    modal(`<h3>선생님께 제출</h3><p class="sub">"${esc(s.title)}" 을(를) ${esc(teachers.map(t=>t.name||t.username).join(', '))} 선생님께 보냅니다</p>
+      <label>메모 (선택)</label><input id="shNote" placeholder="예) 3마디 필인이 어려워요" maxlength="80">
+      <div class="row"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" id="shGo">제출</button></div>`,()=>{
+      $('#shGo').onclick=async()=>{ $('#shGo').disabled=true; if(await sendScore(s,teachers.map(t=>t.user_id),'submit',$('#shNote').value.trim())) closeModal(); else $('#shGo').disabled=false; };
+    });
+    return;
+  }
+  const list=isTeacher()?others:others; const kind=isTeacher()?'assign':'submit';
+  modal(`<h3>${isTeacher()?'학생에게 보내기':'보내기'}</h3><p class="sub">"${esc(s.title)}"</p>
+    <div class="pick" id="pick">${list.map(p=>`<label><input type="checkbox" value="${p.user_id}"><span>${esc(p.name||p.username)}</span><small>${esc(p.username)}</small></label>`).join('')||'<div class="none">아직 가입한 사람이 없습니다</div>'}</div>
+    <label>메모 (선택)</label><input id="shNote" placeholder="예) 다음 주까지 연습해 오세요" maxlength="80">
+    <div class="row"><button class="btn" onclick="closeModal()">취소</button><button class="btn" id="shAll">전체 선택</button><button class="btn pri" id="shGo">보내기</button></div>`,()=>{
+    $('#shAll').onclick=()=>{ const cbs=[...document.querySelectorAll('#pick input')]; const all=cbs.every(c=>c.checked); cbs.forEach(c=>c.checked=!all); };
+    $('#shGo').onclick=async()=>{ const to=[...document.querySelectorAll('#pick input:checked')].map(c=>c.value); if(!to.length) return toast('받을 사람을 고르세요'); $('#shGo').disabled=true; if(await sendScore(s,to,kind,$('#shNote').value.trim())) closeModal(); else $('#shGo').disabled=false; };
+  });
+}
+
 /* ---------------- 로그인 ---------------- */
 const emailOf=id=>id.toLowerCase()+'@drumnote.app';
 const passOf=(id,pin)=>'dn-'+pin+'-'+id.toLowerCase();
@@ -688,10 +782,10 @@ async function authSubmit(e){
   }catch(ex){ err.textContent=ex.message; }
   finally{ $('#aGo').disabled=false; }
 }
-async function doLogout(){ if(dirty.size) await flush(); if(sb) await sb.auth.signOut(); user=null; S=null; DB={scores:[],last:null}; showAuth(); }
+async function doLogout(){ if(dirty.size) await flush(); if(sb) await sb.auth.signOut(); user=null; S=null; DB={scores:[],last:null}; profiles=[]; inbox=[]; shareReady=false; showAuth(); }
 async function enterApp(){
   loadDB(); if(DB.zoom && ZOOMS.includes(DB.zoom)) zoom=DB.zoom;
-  if(cloud()&&user) await pullAll();
+  if(cloud()&&user){ await pullAll(); await ensureProfile(); }
   if(!DB.scores.length){ addScore(makeScore('예제 · 8비트 그루브',true)); }
   showHome();
 }
@@ -706,14 +800,14 @@ function importJson(){ const f=document.createElement('input'); f.type='file'; f
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),1800); }
 
 /* ---------------- 화면 전환 ---------------- */
-function showHome(){ stopPlay(); if(S) save(); view='home'; $('#app').hidden=true; $('#auth').hidden=true; $('#home').hidden=false; renderWho(); renderGallery(); }
+function showHome(){ stopPlay(); if(S) save(); view='home'; $('#app').hidden=true; $('#auth').hidden=true; $('#home').hidden=false; renderWho(); renderInbox(); renderGallery(); refreshInbox(); }
 function openEditor(id){
   const s=DB.scores.find(x=>x.id===id); if(!s) return;
   stopPlay(); S=s; sel={m:0,i:0}; undo.length=0; redo.length=0; closeModal();
   view='editor'; $('#home').hidden=true; $('#app').hidden=false;
   S.measures.forEach((_,i)=>normalize(i)); render(); save();
 }
-function fmtDate(t){ const d=new Date(t), now=new Date(); const same=d.toDateString()===now.toDateString(); return same? d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : d.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'}); }
+function fmtDate(t){ const d=new Date(t), now=new Date(); if(isNaN(d)) return ''; const same=d.toDateString()===now.toDateString(); return same? d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : d.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'}); }
 function renderGallery(){
   const G=$('#gallery'); G.innerHTML='';
   const nc=document.createElement('div'); nc.className='card new'; nc.innerHTML='<i>＋</i><b>새 악보</b><span>4/4 · 4마디로 시작</span>'; nc.onclick=()=>openEditor(addScore(makeScore()).id); G.appendChild(nc);
@@ -733,10 +827,12 @@ function renderGallery(){
   });
 }
 function cardMenu(s){
+  const canShare=cloud()&&user&&shareReady; const shareLabel=isTeacher()?'학생에게 보내기':(profiles.some(p=>TEACHERS.includes(p.username)&&p.user_id!==user?.uid)?'선생님께 제출':'보내기');
   modal(`<h3>${esc(s.title)}</h3><div class="menu">
-    <button id="cmOpen">열기</button><button id="cmRename">이름 바꾸기</button><button id="cmDup">복제</button><button id="cmExport">JSON 내보내기</button><button id="cmDel" class="red">삭제</button></div>
+    <button id="cmOpen">열기</button>${canShare?`<button id="cmShare">✈ ${shareLabel}</button>`:''}<button id="cmRename">이름 바꾸기</button><button id="cmDup">복제</button><button id="cmExport">JSON 내보내기</button><button id="cmDel" class="red">삭제</button></div>
     <div class="row"><button class="btn" onclick="closeModal()">닫기</button></div>`,()=>{
     $('#cmOpen').onclick=()=>openEditor(s.id);
+    if(canShare) $('#cmShare').onclick=()=>shareDialog(s);
     $('#cmRename').onclick=()=>modal(`<h3>이름 바꾸기</h3><input id="rn" value="${esc(s.title)}" maxlength="60"><div class="row"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" id="rnOk">저장</button></div>`,()=>{ $('#rnOk').onclick=()=>{ s.title=$('#rn').value.trim()||'제목 없음'; s.updated=Date.now(); persist(); pushScore(s); closeModal(); renderGallery(); }; $('#rn').focus(); $('#rn').select(); });
     $('#cmDup').onclick=()=>{ const c=clone(s); c.id=uid(); c.title=s.title+' (복사)'; c.updated=Date.now(); addScore(c); closeModal(); renderGallery(); toast('복제됨'); };
     $('#cmExport').onclick=()=>{ exportJson(s); closeModal(); };
@@ -761,6 +857,7 @@ $('#bZoom').onclick=()=>{ const i=ZOOMS.indexOf(zoom); zoom=ZOOMS[(i+1)%ZOOMS.le
 $('#bHome').onclick=showHome;
 $('#hNew').onclick=()=>openEditor(addScore(makeScore()).id);
 $('#hImport').onclick=importJson;
+$('#inboxRefresh').onclick=()=>{ refreshInbox(); toast('새로고침'); };
 $('#tUp').onclick=()=>{ snap(); if(sel.m===0||!S.measures[sel.m].tempo) S.tempo=Math.min(300,S.tempo+2); else S.measures[sel.m].tempo=Math.min(300,S.measures[sel.m].tempo+2); render(); save(); };
 $('#tDn').onclick=()=>{ snap(); if(sel.m===0||!S.measures[sel.m].tempo) S.tempo=Math.max(20,S.tempo-2); else S.measures[sel.m].tempo=Math.max(20,S.measures[sel.m].tempo-2); render(); save(); };
 $('#title').addEventListener('change',()=>{ S.title=$('#title').value.trim()||'제목 없음'; render(); save(); });
