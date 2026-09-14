@@ -1,0 +1,6 @@
+{
+  // Cloudflare Workers(정적 자산) 배포 설정 — `npx wrangler deploy` 로 이 폴더를 그대로 서빙
+  "name": "drumnote",
+  "compatibility_date": "2025-01-01",
+  "assets": { "directory": "./", "not_found_handling": "single-page-application" }
+}
