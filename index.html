@@ -709,7 +709,14 @@ const TEACHERS=(Array.isArray(CFG.teachers)?CFG.teachers:String(CFG.teachers||''
 const isTeacher=()=>!!(user&&TEACHERS.includes(user.id.toLowerCase()));
 let profiles=[], inbox=[], shareReady=false;
 const nameOf=uidv=>{ const p=profiles.find(x=>x.user_id===uidv); return p?(p.name||p.username):'알 수 없음'; };
-async function ensureProfile(){ if(!cloud()||!user) return; const {error}=await sb.from('dn_profiles').upsert({user_id:user.uid,username:user.id,name:user.name||user.id,login_email:user.email}); shareReady=!error; if(error) console.warn('profile',error.message); }
+async function ensureProfile(){ // dn_profiles 행이 이름의 기준. 있으면 거기서 읽고, 없으면 만든다
+  if(!cloud()||!user) return;
+  const {data:row,error:e1}=await sb.from('dn_profiles').select('username,name,avatar,login_email').eq('user_id',user.uid).maybeSingle();
+  if(e1){ shareReady=false; console.warn('profile',e1.message); return; }
+  if(row){ user.id=row.username||user.id; user.name=row.name||row.username||user.name; if(row.avatar&&!user.avatar) user.avatar=row.avatar; shareReady=true;
+    if(!row.login_email) sb.from('dn_profiles').update({login_email:user.email}).eq('user_id',user.uid).then(()=>{}); }
+  else { const {error}=await sb.from('dn_profiles').insert({user_id:user.uid,username:user.id,name:user.name||user.id,login_email:user.email}); shareReady=!error; if(error) console.warn('profile',error.message); }
+}
 async function loadProfiles(){ if(!cloud()||!user) return; const {data}=await sb.from('dn_profiles').select('user_id,username,name'); profiles=data||[]; }
 async function loadInbox(){ if(!cloud()||!user||!shareReady){ inbox=[]; return; } const {data}=await sb.from('dn_shares').select('id,from_user,kind,title,note,created_at,accepted_at').eq('to_user',user.uid).order('created_at',{ascending:false}).limit(100); inbox=data||[]; }
 async function refreshInbox(){ await loadProfiles(); await loadInbox(); renderInbox(); }
