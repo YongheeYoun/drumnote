@@ -3,6 +3,6 @@
 window.DRUMNOTE_CONFIG = {
   url: 'https://fielkitrwshiyxjwzrjv.supabase.co',
   key: 'sb_publishable_953BU6rfDr8aYq3FS0Tujg_CWZfnoNE',
-  // 선생님 계정 아이디 (여러 명이면 쉼표로). 지정하면 학생에게 "선생님께 제출" 버튼이 생깁니다.
-  teachers: []
+  // 선생님 계정 이름 (여러 명이면 쉼표로). 선생님에게만 학생 등록·과제 보내기 메뉴가 보입니다.
+  teachers: ['윤용희']
 };

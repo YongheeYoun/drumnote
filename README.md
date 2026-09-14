@@ -11,13 +11,14 @@
 | `supabase.js` | Supabase 클라이언트 (로컬 복사본) |
 | `supabase_setup.sql` | Supabase에서 한 번 실행할 테이블·권한 설정 (악보 저장) |
 | `supabase_share.sql` | 악보 주고받기용 테이블 (과제 보내기 · 제출) — 두 번째로 실행 |
+| `supabase_login.sql` | 이름으로 로그인·이름 변경을 위한 조회 함수 — 세 번째로 실행 |
 | `manifest.webmanifest`, `icon-*.png`, `icon.svg` | 홈 화면 추가용 이름·아이콘 |
 
 ## 처음 설정 (1회, 약 10분)
 
 ### 1. Supabase 프로젝트
 1. https://supabase.com → New project (무료). 이름은 `drumnote` 등 아무거나.
-2. **SQL Editor** → `supabase_setup.sql` 을 붙여넣고 Run, 이어서 `supabase_share.sql` 도 Run.
+2. **SQL Editor** → `supabase_setup.sql`, `supabase_share.sql`, `supabase_login.sql` 을 차례로 Run.
 3. **Authentication → Providers → Email** → `Confirm email` **OFF** → Save.
 4. **Project Settings → API** 에서 `Project URL` 과 `publishable (anon) key` 복사.
 
@@ -38,13 +39,20 @@ window.DRUMNOTE_CONFIG = {
 
 이후 수정은 GitHub에 파일만 다시 올리면 자동 배포됩니다.
 
+## 계정 관리 (선생님)
+
+- 학생 계정은 **선생님이 만듭니다.** 홈 → **👥 학생 관리** → 이름 + 핀번호(기본 0000) → 등록.
+- 학생은 그 이름과 핀번호로 로그인합니다. 가입 화면은 없습니다.
+- 오른쪽 위 **프로필 동그라미** → 프로필 이미지 · 이름(아이디) · 핀번호를 본인이 바꿀 수 있습니다.
+- 학생이 핀번호를 잊으면: Supabase → Authentication → Users에서 그 계정을 지우고 다시 등록하세요. (악보는 계정과 함께 삭제되니 미리 JSON 내보내기)
+- 선생님 이름을 바꾸면 `config.js`의 `teachers`도 같이 바꿔야 선생님 메뉴가 유지됩니다.
+
 ## 학생에게 안내할 내용
 
-1. 주소 열기 → **가입하기** → 아이디(영문·숫자)·이름·핀번호(숫자 4~6자리) → 시작
-2. Safari 공유 → **홈 화면에 추가** 하면 앱처럼 열림
-3. 같은 아이디·핀번호로 폰·아이패드 어디서든 같은 악보
-
-핀번호를 잊으면 선생님이 Supabase → Authentication → Users 에서 해당 계정을 지우고 다시 가입하게 하면 됩니다. (악보는 계정과 함께 삭제됩니다)
+1. 주소 열기 → 선생님이 알려준 **이름**과 **핀번호(처음엔 0000)** 로 로그인
+2. 프로필 동그라미에서 핀번호를 바꾸기
+3. Safari 공유 → **홈 화면에 추가** 하면 앱처럼 열림
+4. 같은 이름·핀번호로 폰·아이패드 어디서든 같은 악보
 
 ## 과제 보내기 · 제출
 

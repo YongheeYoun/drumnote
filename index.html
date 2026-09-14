@@ -50,6 +50,16 @@ button{font-family:inherit;cursor:pointer}
 .who .dot{width:8px;height:8px;border-radius:50%;background:#64748b}
 .who .dot.ok{background:#22c55e}.who .dot.saving{background:#f59e0b}.who .dot.offline{background:#ef4444}
 .who button{background:none;border:1px solid var(--line);color:var(--sub);border-radius:9px;padding:6px 10px;font-size:12px}
+.avatar{width:42px;height:42px;border-radius:50%;border:2px solid var(--line);background:var(--ui3);color:#fff;font-size:16px;font-weight:800;display:grid;place-items:center;overflow:hidden;padding:0;flex:0 0 auto;background-size:cover;background-position:center}
+.avatar.big{width:96px;height:96px;font-size:36px;margin:0 auto 8px}
+.pf{text-align:center;margin-bottom:6px}
+.pf b{font-size:17px}
+.pf small{display:block;color:var(--sub);font-size:12px;margin-top:2px}
+.slist{display:flex;flex-direction:column;gap:6px;max-height:40dvh;overflow:auto;margin-top:8px}
+.slist .it{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--ui);border:1px solid var(--line)}
+.slist .it b{flex:1;font-size:15px}
+.slist .it small{color:var(--sub);font-size:12px}
+.slist .none{color:var(--sub);font-size:13px;padding:14px;text-align:center}
 
 /* ================= 홈 (갤러리) ================= */
 #home{display:flex;flex-direction:column;height:100dvh}
@@ -185,16 +195,14 @@ footer{flex:0 0 auto;background:var(--ui);border-top:1px solid var(--line);paddi
 <!-- ================= 로그인 ================= -->
 <div id="auth" hidden>
   <form class="abox" id="authForm" autocomplete="off">
-    <div class="logo"><img src="icon.svg" alt="" onerror="this.remove()"><b>드럼노트</b><span id="authSub">아이디와 핀번호로 들어갑니다</span></div>
-    <label>아이디</label>
-    <input id="aId" placeholder="영문·숫자 2~20자" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20">
-    <div id="aNameBox" hidden><label>이름</label><input id="aName" placeholder="예) 하솔" maxlength="20"></div>
+    <div class="logo"><img src="icon.svg" alt="" onerror="this.remove()"><b>드럼노트</b><span id="authSub">이름과 핀번호로 들어갑니다</span></div>
+    <label>이름</label>
+    <input id="aId" placeholder="선생님이 등록한 이름" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="20">
     <label>핀번호</label>
     <input id="aPin" class="pin" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="숫자 4~6자리" maxlength="6">
     <div class="err" id="aErr"></div>
     <button class="go" id="aGo" type="submit">로그인</button>
-    <button class="sw" id="aSwitch" type="button">처음이세요? <b>가입하기</b></button>
-    <button class="local" id="aLocal" type="button">계정 없이 이 기기에서만 쓰기</button>
+    <div class="sw" style="color:#6b7597;text-align:center">계정은 선생님이 만들어 줍니다 · 처음 핀번호는 0000</div>
   </form>
 </div>
 
@@ -204,8 +212,10 @@ footer{flex:0 0 auto;background:var(--ui);border-top:1px solid var(--line);paddi
     <h1><img src="icon.svg" alt="" onerror="this.remove()">드럼노트</h1>
     <div class="who" id="who"></div>
     <span class="sp"></span>
+    <button class="hb" id="hStudents" hidden>👥 학생 관리</button>
     <button class="hb" id="hImport">⬆ 불러오기</button>
     <button class="hb pri" id="hNew">＋ 새 악보</button>
+    <button class="avatar" id="hProfile" hidden title="내 프로필"></button>
   </div>
   <div class="gal-wrap">
     <div class="inbox" id="inbox" hidden>
@@ -614,7 +624,7 @@ function renderTools(){
   }
   else if(tab==='file'){
     T.appendChild(grp(tbtn('홈 (갤러리)','⌂',false,showHome), tbtn('새 악보','＋',false,()=>{ save(); openEditor(addScore(makeScore()).id); }), tbtn('복제','⧉',false,()=>{ save(); const c=clone(S); c.id=uid(); c.title=S.title+' (복사)'; addScore(c); openEditor(c.id); toast('복제됨'); })));
-    if(cloud()&&user&&shareReady){ const lbl=isTeacher()?'학생에게 보내기':(profiles.some(p=>TEACHERS.includes(p.username)&&p.user_id!==user.uid)?'선생님께 제출':'보내기'); T.appendChild(grp(tbtn(lbl,'✈',false,()=>{ save(); shareDialog(S); },{wide:true}))); }
+    if(cloud()&&user&&shareReady){ const lbl=isTeacher()?'학생에게 보내기':(profiles.some(p=>TEACHERS.includes((p.username||'').toLowerCase())&&p.user_id!==user.uid)?'선생님께 제출':'보내기'); T.appendChild(grp(tbtn(lbl,'✈',false,()=>{ save(); shareDialog(S); },{wide:true}))); }
     T.appendChild(grp(tbtn('JSON 내보내기','⬇',false,()=>exportJson(S)), tbtn('JSON 불러오기','⬆',false,importJson), tbtn('인쇄 / PDF','🖨',false,()=>window.print())));
     hint.textContent=cloud()&&user?'악보는 자동으로 클라우드에 저장됩니다. 같은 아이디로 어디서든 열 수 있어요.':'데이터는 이 브라우저에 자동 저장됩니다. 다른 기기로 옮기려면 JSON으로 내보내세요.';
   }
@@ -699,7 +709,7 @@ const TEACHERS=(Array.isArray(CFG.teachers)?CFG.teachers:String(CFG.teachers||''
 const isTeacher=()=>!!(user&&TEACHERS.includes(user.id.toLowerCase()));
 let profiles=[], inbox=[], shareReady=false;
 const nameOf=uidv=>{ const p=profiles.find(x=>x.user_id===uidv); return p?(p.name||p.username):'알 수 없음'; };
-async function ensureProfile(){ if(!cloud()||!user) return; const {error}=await sb.from('dn_profiles').upsert({user_id:user.uid,username:user.id.toLowerCase(),name:user.name||''}); shareReady=!error; }
+async function ensureProfile(){ if(!cloud()||!user) return; const {error}=await sb.from('dn_profiles').upsert({user_id:user.uid,username:user.id,name:user.name||user.id,login_email:user.email}); shareReady=!error; if(error) console.warn('profile',error.message); }
 async function loadProfiles(){ if(!cloud()||!user) return; const {data}=await sb.from('dn_profiles').select('user_id,username,name'); profiles=data||[]; }
 async function loadInbox(){ if(!cloud()||!user||!shareReady){ inbox=[]; return; } const {data}=await sb.from('dn_shares').select('id,from_user,kind,title,note,created_at,accepted_at').eq('to_user',user.uid).order('created_at',{ascending:false}).limit(100); inbox=data||[]; }
 async function refreshInbox(){ await loadProfiles(); await loadInbox(); renderInbox(); }
@@ -736,7 +746,7 @@ function shareDialog(s){
   if(!cloud()||!user) return toast('로그인해야 보낼 수 있습니다');
   if(!shareReady) return toast('주고받기 준비가 안 됐습니다. Supabase에 supabase_share.sql을 실행하세요');
   const others=profiles.filter(p=>p.user_id!==user.uid).sort((a,b)=>(a.name||a.username).localeCompare(b.name||b.username,'ko'));
-  const teachers=others.filter(p=>TEACHERS.includes(p.username));
+  const teachers=others.filter(p=>TEACHERS.includes((p.username||'').toLowerCase()));
   if(!isTeacher() && teachers.length){
     modal(`<h3>선생님께 제출</h3><p class="sub">"${esc(s.title)}" 을(를) ${esc(teachers.map(t=>t.name||t.username).join(', '))} 선생님께 보냅니다</p>
       <label>메모 (선택)</label><input id="shNote" placeholder="예) 3마디 필인이 어려워요" maxlength="80">
@@ -755,34 +765,90 @@ function shareDialog(s){
   });
 }
 
-/* ---------------- 로그인 ---------------- */
-const emailOf=id=>id.toLowerCase()+'@drumnote.app';
-const passOf=(id,pin)=>'dn-'+pin+'-'+id.toLowerCase();
-let signup=false;
-function setUser(u){ const md=u.user_metadata||{}; user={uid:u.id,id:md.username||u.email.split('@')[0],name:md.name||''}; }
+/* ---------------- 로그인 (이름 + 핀번호) ----------------
+   계정의 내부 이메일은 만들 때 정해지는 무작위 키(k…@drumnote.app)이고, 이름은 dn_profiles.username.
+   로그인 화면에서는 dn_login_email(이름) 함수로 키를 찾아 로그인한다. 이름을 바꿔도 계정은 그대로. */
+const passOf=pin=>'dn-'+pin+'-drumnote';
+const newLoginEmail=()=>'k'+Array.from(crypto.getRandomValues(new Uint8Array(10))).map(b=>b.toString(16).padStart(2,'0')).join('')+'@drumnote.app';
+function setUser(u){ const md=u.user_metadata||{}; user={uid:u.id,id:md.username||md.name||'이름 없음',name:md.name||md.username||'',avatar:md.avatar||'',email:u.email}; }
 function showAuth(){ view='auth'; $('#app').hidden=true; $('#home').hidden=true; $('#auth').hidden=false; $('#aErr').textContent=''; setTimeout(()=>$('#aId').focus(),50); }
-function authMode(s){ signup=s; $('#aNameBox').hidden=!s; $('#aGo').textContent=s?'가입하고 시작':'로그인'; $('#aSwitch').innerHTML=s?'이미 계정이 있어요? <b>로그인</b>':'처음이세요? <b>가입하기</b>'; $('#authSub').textContent=s?'아이디와 핀번호를 정해 주세요':'아이디와 핀번호로 들어갑니다'; $('#aErr').textContent=''; }
 async function authSubmit(e){
-  e.preventDefault(); const id=$('#aId').value.trim(), pin=$('#aPin').value.trim(), name=$('#aName').value.trim(); const err=$('#aErr');
-  if(!/^[a-z0-9_]{2,20}$/i.test(id)) return err.textContent='아이디는 영문·숫자·_ 2~20자입니다';
+  e.preventDefault(); const name=$('#aId').value.trim(), pin=$('#aPin').value.trim(); const err=$('#aErr');
+  if(!name) return err.textContent='이름을 입력하세요';
   if(!/^\d{4,6}$/.test(pin)) return err.textContent='핀번호는 숫자 4~6자리입니다';
   $('#aGo').disabled=true; err.textContent='';
   try{
-    if(signup){
-      const {data,error}=await sb.auth.signUp({email:emailOf(id),password:passOf(id,pin),options:{data:{username:id,name}}});
-      if(error) throw new Error(/already|exists|registered/i.test(error.message)?'이미 있는 아이디입니다':error.message);
-      if(!data.session) throw new Error('가입 확인 설정 때문에 바로 시작할 수 없습니다. 관리자에게 알려주세요');
-      setUser(data.user);
-    } else {
-      const {data,error}=await sb.auth.signInWithPassword({email:emailOf(id),password:passOf(id,pin)});
-      if(error) throw new Error(/invalid|credentials/i.test(error.message)?'아이디 또는 핀번호가 맞지 않습니다':error.message);
-      setUser(data.user);
-    }
+    const {data:email,error:e1}=await sb.rpc('dn_login_email',{uname:name});
+    if(e1) throw new Error('로그인 준비가 안 됐습니다 (supabase_login.sql 실행 필요)');
+    if(!email) throw new Error('등록되지 않은 이름입니다. 선생님께 등록을 부탁하세요');
+    const {data,error}=await sb.auth.signInWithPassword({email,password:passOf(pin)});
+    if(error) throw new Error(/invalid|credentials/i.test(error.message)?'핀번호가 맞지 않습니다':error.message);
+    setUser(data.user);
     await enterApp();
   }catch(ex){ err.textContent=ex.message; }
   finally{ $('#aGo').disabled=false; }
 }
 async function doLogout(){ if(dirty.size) await flush(); if(sb) await sb.auth.signOut(); user=null; S=null; DB={scores:[],last:null}; profiles=[]; inbox=[]; shareReady=false; showAuth(); }
+
+/* ---------------- 내 프로필 (이미지 · 이름 · 핀번호) ---------------- */
+function avatarStyle(el,u){ const nm=u.name||u.id||'?'; if(u.avatar){ el.style.backgroundImage=`url(${u.avatar})`; el.textContent=''; } else { el.style.backgroundImage=''; el.textContent=nm.slice(0,1); const h=[...nm].reduce((a,c)=>a+c.charCodeAt(0),0)%360; el.style.background=`hsl(${h} 45% 45%)`; } }
+function profileDialog(){
+  modal(`<div class="pf"><button class="avatar big" id="pfAv"></button><b>${esc(user.name||user.id)}</b><small>${isTeacher()?'선생님':'학생'}</small></div>
+    <div class="menu"><button id="pfImg">프로필 이미지 수정</button><button id="pfName">이름(아이디) 수정</button><button id="pfPin">핀번호 수정</button><button id="pfOut" class="red">로그아웃</button></div>
+    <div class="row"><button class="btn" onclick="closeModal()">닫기</button></div>`,()=>{
+    avatarStyle($('#pfAv'),user);
+    $('#pfAv').onclick=$('#pfImg').onclick=pickAvatar;
+    $('#pfName').onclick=()=>modal(`<h3>이름(아이디) 수정</h3><p class="sub">로그인할 때 쓰는 이름입니다${isTeacher()?"<br><b style=\"color:#fca5a5\">선생님 이름을 바꾸면 config.js의 teachers도 같이 바꿔야 선생님 메뉴가 유지됩니다</b>":""}</p><input id="nn" value="${esc(user.name||user.id)}" maxlength="20"><div class="row"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" id="nnOk">저장</button></div>`,()=>{
+      $('#nnOk').onclick=async()=>{ const v=$('#nn').value.trim(); if(!v) return toast('이름을 입력하세요'); if(v===user.name) return closeModal();
+        if(profiles.some(p=>p.username===v&&p.user_id!==user.uid)) return toast('이미 쓰는 이름입니다');
+        $('#nnOk').disabled=true;
+        const {error}=await sb.from('dn_profiles').update({username:v,name:v}).eq('user_id',user.uid);
+        if(error){ $('#nnOk').disabled=false; return toast('저장 실패: '+error.message); }
+        await sb.auth.updateUser({data:{username:v,name:v}}); user.id=v; user.name=v; await loadProfiles(); closeModal(); renderWho(); toast('이름을 바꿨습니다'); };
+      $('#nn').focus(); $('#nn').select(); });
+    $('#pfPin').onclick=()=>modal(`<h3>핀번호 수정</h3><label>새 핀번호</label><input id="p1" class="pin" type="password" inputmode="numeric" maxlength="6" placeholder="숫자 4~6자리"><label>한 번 더</label><input id="p2" class="pin" type="password" inputmode="numeric" maxlength="6"><div class="row"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" id="pOk">저장</button></div>`,()=>{
+      $('#pOk').onclick=async()=>{ const a=$('#p1').value.trim(), b=$('#p2').value.trim(); if(!/^\d{4,6}$/.test(a)) return toast('핀번호는 숫자 4~6자리입니다'); if(a!==b) return toast('두 번 입력한 핀번호가 다릅니다');
+        $('#pOk').disabled=true; const {error}=await sb.auth.updateUser({password:passOf(a)});
+        if(error&&!/same_password|different/i.test(error.message)){ $('#pOk').disabled=false; return toast('저장 실패: '+error.message); }
+        closeModal(); toast('핀번호를 바꿨습니다'); };
+      $('#p1').focus(); });
+    $('#pfOut').onclick=()=>{ closeModal(); doLogout(); };
+  });
+}
+function pickAvatar(){
+  const f=document.createElement('input'); f.type='file'; f.accept='image/*';
+  f.onchange=()=>{ const file=f.files[0]; if(!file) return; const img=new Image(); const url=URL.createObjectURL(file);
+    img.onload=async()=>{ const S0=128, c=document.createElement('canvas'); c.width=S0; c.height=S0; const x=c.getContext('2d'); const s=Math.min(img.width,img.height); x.drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,S0,S0); URL.revokeObjectURL(url);
+      const data=c.toDataURL('image/jpeg',0.8); const {error}=await sb.auth.updateUser({data:{avatar:data}}); if(error) return toast('저장 실패: '+error.message);
+      user.avatar=data; sb.from('dn_profiles').update({avatar:data}).eq('user_id',user.uid).then(()=>{}); renderWho(); const big=$('#pfAv'); if(big) avatarStyle(big,user); toast('프로필 이미지를 바꿨습니다'); };
+    img.src=url; };
+  f.click();
+}
+
+/* ---------------- 학생 관리 (선생님) ---------------- */
+async function createStudent(name,pin){
+  if(profiles.some(p=>p.username===name)) throw new Error('이미 있는 이름입니다');
+  const tmp=supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+  const email=newLoginEmail();
+  const {data,error}=await tmp.auth.signUp({email,password:passOf(pin),options:{data:{username:name,name}}});
+  if(error) throw new Error(error.message);
+  if(!data.session) throw new Error('가입 확인 설정 때문에 만들 수 없습니다 (Confirm email OFF 필요)');
+  const {error:e2}=await tmp.from('dn_profiles').insert({user_id:data.user.id,username:name,name,login_email:email});
+  if(e2) throw new Error('프로필 저장 실패: '+e2.message);
+  await tmp.auth.signOut(); await loadProfiles();
+}
+function studentsDialog(){
+  const list=profiles.filter(p=>p.user_id!==user.uid).sort((a,b)=>(a.name||a.username).localeCompare(b.name||b.username,'ko'));
+  modal(`<h3>학생 관리</h3>
+    <div class="row" style="margin-top:4px"><input id="stName" placeholder="학생 이름" maxlength="20" style="flex:2"><input id="stPin" class="pin" inputmode="numeric" maxlength="6" value="0000" style="flex:1"><button class="btn pri" id="stAdd" style="flex:0 0 auto">등록</button></div>
+    <p class="sub" style="margin-top:6px">학생은 이 이름과 핀번호로 로그인합니다. 핀번호는 학생이 프로필에서 바꿀 수 있어요.</p>
+    <div class="slist">${list.map(p=>`<div class="it"><b>${esc(p.name||p.username)}</b><small>${TEACHERS.includes((p.username||'').toLowerCase())?'선생님':'학생'}</small></div>`).join('')||'<div class="none">아직 등록한 학생이 없습니다</div>'}</div>
+    <div class="row"><button class="btn" onclick="closeModal()">닫기</button></div>`,()=>{
+    $('#stAdd').onclick=async()=>{ const name=$('#stName').value.trim(), pin=$('#stPin').value.trim()||'0000';
+      if(!name) return toast('이름을 입력하세요'); if(!/^\d{4,6}$/.test(pin)) return toast('핀번호는 숫자 4~6자리입니다');
+      $('#stAdd').disabled=true; try{ await createStudent(name,pin); toast(`${name} 등록 완료 · 핀번호 ${pin}`); studentsDialog(); }catch(ex){ toast(ex.message); $('#stAdd').disabled=false; } };
+    $('#stName').focus(); });
+}
 async function enterApp(){
   loadDB(); if(DB.zoom && ZOOMS.includes(DB.zoom)) zoom=DB.zoom;
   if(cloud()&&user){ await pullAll(); await ensureProfile(); }
@@ -790,10 +856,9 @@ async function enterApp(){
   showHome();
 }
 function renderWho(){
-  const w=$('#who'); if(!w) return;
-  if(user){ w.innerHTML=`<span class="dot"></span><b>${esc(user.name||user.id)}</b><span class="st"></span><button id="bLogout">로그아웃</button>`; $('#bLogout').onclick=doLogout; setSync(dirty.size?'saving':'ok'); }
-  else if(cloud()){ w.innerHTML=`<span class="dot"></span><span class="st">이 기기에만 저장</span><button id="bLogin">로그인</button>`; $('#bLogin').onclick=showAuth; }
-  else { w.innerHTML=`<span class="dot"></span><span class="st">이 기기에만 저장</span>`; }
+  const w=$('#who'); if(!w) return; const av=$('#hProfile'), st=$('#hStudents');
+  if(user){ w.innerHTML=`<span class="dot"></span><b>${esc(user.name||user.id)}</b><span class="st"></span>`; setSync(dirty.size?'saving':'ok'); av.hidden=false; avatarStyle(av,user); st.hidden=!(isTeacher()&&shareReady); }
+  else { w.innerHTML=`<span class="dot"></span><span class="st">이 기기에만 저장</span>`; av.hidden=true; st.hidden=true; }
 }
 function exportJson(s){ const blob=new Blob([JSON.stringify(s,null,1)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(s.title||'악보')+'.drumnote.json'; a.click(); URL.revokeObjectURL(a.href); toast('내보내기 완료'); }
 function importJson(){ const f=document.createElement('input'); f.type='file'; f.accept='.json,application/json'; f.onchange=()=>{ const file=f.files[0]; if(!file) return; const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!s||!Array.isArray(s.measures)) throw 0; s.id=uid(); s.updated=Date.now(); const keep=S; S=s; S.measures.forEach((_,i)=>normalize(i)); S=keep; addScore(s); toast('불러오기 완료'); if(view==='home') renderGallery(); else openEditor(s.id); }catch(e){ toast('올바른 악보 파일이 아닙니다'); } }; r.readAsText(file); }; f.click(); }
@@ -827,7 +892,7 @@ function renderGallery(){
   });
 }
 function cardMenu(s){
-  const canShare=cloud()&&user&&shareReady; const shareLabel=isTeacher()?'학생에게 보내기':(profiles.some(p=>TEACHERS.includes(p.username)&&p.user_id!==user?.uid)?'선생님께 제출':'보내기');
+  const canShare=cloud()&&user&&shareReady; const shareLabel=isTeacher()?'학생에게 보내기':(profiles.some(p=>TEACHERS.includes((p.username||'').toLowerCase())&&p.user_id!==user?.uid)?'선생님께 제출':'보내기');
   modal(`<h3>${esc(s.title)}</h3><div class="menu">
     <button id="cmOpen">열기</button>${canShare?`<button id="cmShare">✈ ${shareLabel}</button>`:''}<button id="cmRename">이름 바꾸기</button><button id="cmDup">복제</button><button id="cmExport">JSON 내보내기</button><button id="cmDel" class="red">삭제</button></div>
     <div class="row"><button class="btn" onclick="closeModal()">닫기</button></div>`,()=>{
@@ -874,8 +939,8 @@ let rt; window.addEventListener('resize',()=>{ clearTimeout(rt); rt=setTimeout((
 
 /* ---------------- 시작 ---------------- */
 $('#authForm').addEventListener('submit',authSubmit);
-$('#aSwitch').onclick=()=>authMode(!signup);
-$('#aLocal').onclick=()=>{ user=null; enterApp(); };
+$('#hProfile').onclick=profileDialog;
+$('#hStudents').onclick=studentsDialog;
 (async()=>{
   if(cloud()){
     try{ sb=supabase.createClient(CFG.url,CFG.key); const {data:{session}}=await sb.auth.getSession(); if(session&&session.user){ setUser(session.user); await enterApp(); return; } }
